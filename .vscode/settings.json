@@ -1,0 +1,17 @@
+{
+	"files.associations": {
+		"*.ui": "xml",
+		"string": "cpp",
+		"array": "cpp",
+		"deque": "cpp",
+		"list": "cpp",
+		"unordered_map": "cpp",
+		"vector": "cpp",
+		"string_view": "cpp",
+		"format": "cpp",
+		"initializer_list": "cpp",
+		"span": "cpp",
+		"ranges": "cpp",
+		"valarray": "cpp"
+	}
+}
