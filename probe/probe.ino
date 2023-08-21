@@ -4,7 +4,6 @@
 #define BROKER_ADDR  "192.168.0.xxx"
 #define BROKER_USER  "mqtt_user"
 #define BROKER_PASS  "mqtt_pass"
-#define BROKER_TOPIC "room-temp"
 // device
 #define ROOM_ID  "room_name"
 #define BUF_SIZE 32
@@ -17,7 +16,7 @@
 DHT sensor(17, DHT11);
 
 Wireless  wireless(WIFI_SSID, WIFI_PASS);
-Publisher publisher(wireless, BROKER_ADDR, BROKER_USER, BROKER_PASS, BROKER_TOPIC);
+Publisher publisher(wireless, BROKER_ADDR, BROKER_USER, BROKER_PASS);
 
 void setup(){
 	Serial.begin(115200);
@@ -38,5 +37,5 @@ void loop() {
 		delay(1000);
 		return;
 	}
-	publisher.publish(BROKER_TOPIC, m);
+	publisher.publish(ROOM_ID, m);
 }
