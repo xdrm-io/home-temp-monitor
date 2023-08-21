@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -25,6 +26,7 @@ func main() {
 	}
 	defer storage.Close()
 
+	// launch mqtt persistent collector
 	collector, err := NewCollector(*cnf, storage)
 	if err != nil {
 		log.Fatalf("collector: %v", err)
@@ -35,6 +37,10 @@ func main() {
 		log.Fatalf("cannot subscribe: %v", err)
 	}
 
-	for {
+	// launch http server
+	server := NewServer(storage)
+	log.Printf("listening on %s", ":8080")
+	if err := http.ListenAndServe(":8080", server); err != nil {
+		log.Fatalf("http server: %v", err)
 	}
 }
