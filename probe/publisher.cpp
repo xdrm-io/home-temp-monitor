@@ -42,6 +42,7 @@ void Publisher::publish(const char* room, const Measure& m){
 	reconnect();
 
 	// range over buffer measures
+	const auto now = millis()%1000;
 	for( auto i = 0 ; i < m_buffer.size() ; i++ ){
 		const auto measure = m_buffer.get(i);
 		if( measure == nullptr ){
@@ -58,7 +59,7 @@ void Publisher::publish(const char* room, const Measure& m){
 		const auto& payload = String("{")
 			+ "\"t\":" + String(measure->temperature) + ","
 			+ "\"h\":" + String(measure->humidity) + ","
-			+ "\"d\":" + String((millis()%1000) - measure->timestamp)
+			+ "\"d\":" + String(now - measure->timestamp)
 			+ "}";
 
 		Serial.print("[pub] topic '");
