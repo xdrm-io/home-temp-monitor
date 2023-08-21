@@ -66,7 +66,7 @@ func (s *storage) Close() error {
 
 func (s *storage) Append(ctx context.Context, m Measure) error {
 	var (
-		ts = time.Now().Add(time.Duration(m.OffsetSec) * time.Second).Unix()
+		ts = time.Now().Add(-time.Duration(m.OffsetSec) * time.Second).Unix()
 		t  = float64(m.Temperature) / 10.
 		h  = float64(m.Humidity) / 10.
 	)
