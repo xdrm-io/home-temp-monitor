@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // Measure as received from the sensor
@@ -41,7 +41,7 @@ type storage struct {
 }
 
 func NewStorage(filename string) (Storage, error) {
-	db, err := sql.Open("sqlite3", filename)
+	db, err := sql.Open("sqlite", filename)
 	if err != nil {
 		return nil, err
 	}
