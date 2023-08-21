@@ -3,7 +3,7 @@
 #include <string>
 
 Publisher::Publisher(Wireless w, const char* host, const char* user, const char* pass)
-: m_user(user), m_pass(pass), m_wireless(w), m_client(w.client())
+: m_user(user), m_pass(pass), m_wireless(w), m_client(*w.client())
 {
 	m_client.setServer(host, 1883);
 }
@@ -13,15 +13,13 @@ void Publisher::loop() {
 }
 
 void Publisher::reconnect() {
-	if( m_client.connected() ){
-		return;
-	}
+	const auto& id = String(random(0xffff), HEX);
 
-	const auto id = String(random(0xffff), HEX).c_str();
 	while( !m_client.connected() ){
-		if( !m_client.connect(id, m_user, m_pass) ){
+		Serial.println("[pub] reconnecting");
+		if( !m_client.connect(id.c_str(), m_user, m_pass) ){
 			Serial.println("[pub] failed to connect");
-			delay(500);
+			delay(1000);
 		}
 	}
 	Serial.println("[pub] connected");
@@ -63,6 +61,11 @@ void Publisher::publish(const char* room, const Measure& m){
 			+ "\"d\":" + String((millis()%1000) - measure->timestamp)
 			+ "}";
 
+		Serial.print("[pub] topic '");
+		Serial.print(topic);
+		Serial.print("' payload '");
+		Serial.print(payload);
+		Serial.println("'");
 		m_client.publish(topic.c_str(), payload.c_str());
 	}
 	m_buffer.clear();

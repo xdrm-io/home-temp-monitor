@@ -1,6 +1,6 @@
 #pragma once
 
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 
 class Wireless {
 	public:
@@ -11,10 +11,10 @@ class Wireless {
 		void reconnect();
 		bool connected() const;
 
-		WiFiClient& client();
+		WiFiClient* client();
 
 	private:
-		const char* m_ssid { nullptr };
-		const char* m_pass { nullptr };
-		WiFiClient  m_client {};
+		const char* m_ssid   { nullptr };
+		const char* m_pass   { nullptr };
+		WiFiClient* m_client { nullptr };
 };

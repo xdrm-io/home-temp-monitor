@@ -19,8 +19,12 @@ Wireless  wireless(WIFI_SSID, WIFI_PASS);
 Publisher publisher(wireless, BROKER_ADDR, BROKER_USER, BROKER_PASS);
 
 void setup(){
+	randomSeed(micros());
+
 	Serial.begin(115200);
+	Serial.println();
 	wireless.setup();
+	wireless.reconnect();
 }
 
 void loop() {
@@ -37,5 +41,9 @@ void loop() {
 	m.temperature = data.temperature;
 	m.humidity = data.humidity;
 
+	Serial.print("[sensor] ");
+	Serial.print(m.temperature);
+	Serial.print(" / ");
+	Serial.println(m.humidity);
 	publisher.publish(ROOM_ID, m);
 }

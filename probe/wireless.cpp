@@ -1,10 +1,11 @@
 #include "wireless.h"
 
 Wireless::Wireless(const char* ssid, const char* pass)
-: m_ssid(ssid), m_pass(pass)
+: m_ssid(ssid), m_pass(pass), m_client(new WiFiClient())
 {}
 
 void Wireless::setup(){
+	WiFi.mode(WIFI_STA);
 	WiFi.begin(
 		const_cast<char*>(m_ssid),
 		const_cast<char*>(m_pass)
@@ -21,7 +22,7 @@ void Wireless::reconnect() {
 	}
 
 	Serial.print("[wifi] connecting to ");
-	Serial.println(m_ssid);
+	Serial.print(m_ssid);
 	while( !connected() ){
 			delay(500);
 			Serial.print(".");
@@ -33,6 +34,6 @@ void Wireless::reconnect() {
 	Serial.println(WiFi.localIP());
 }
 
-WiFiClient& Wireless::client() {
+WiFiClient* Wireless::client() {
 	return m_client;
 }
