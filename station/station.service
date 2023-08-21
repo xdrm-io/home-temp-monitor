@@ -1,0 +1,14 @@
+[Unit]
+Description=Room station service [%i]
+Before=network.target
+Wants=network.target
+
+[Service]
+User=pi
+Group=pi
+Restart=always
+RestartSec=1
+ExecStart=/usr/bin/bash /opt/station/station.sh
+
+[Install]
+WantedBy=multi-user.target

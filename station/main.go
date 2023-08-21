@@ -20,7 +20,7 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	storage, err := NewStorage("./db.sqlite")
+	storage, err := NewStorage(cnf.DBPath)
 	if err != nil {
 		log.Fatalf("storage: %v", err)
 	}

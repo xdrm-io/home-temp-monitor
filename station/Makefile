@@ -8,13 +8,24 @@ build:
 	go build -ldflags '-s -w' -o station .
 
 run:
-	./station "${BROKER_ADDR}" "${BROKER_USER}" "${BROKER_PASS}" "${MQTT_TOPIC}"
+	./station "${BROKER_ADDR}" "${BROKER_USER}" "${BROKER_PASS}" "${MQTT_TOPIC}" "${DB_PATH}"
 
 package:
 	rm -rf ./pkg
 	mkdir -p ./pkg
-	go build -ldflags '-s -w' -o ./pkg/station .
+
+	GOOS=linux GOARCH=arm GOARM=5 CGO_ENABLED=0 go build -o ./pkg/station .
+	chmod +x ./pkg/station
+
 	echo '#!/bin/bash' > ./pkg/station.sh
-	echo "./station \"${BROKER_ADDR}\" \"${BROKER_USER}\" \"${BROKER_PASS}\" \"${MQTT_TOPIC}\"" >> ./pkg/station.sh
+	echo "root=\$$(dirname \$$(realpath \$$0))" >> ./pkg/station.sh
+	echo "\$${root}/station \"${BROKER_ADDR}\" \"${BROKER_USER}\" \"${BROKER_PASS}\" \"${MQTT_TOPIC}\" \$${root}/${DB_PATH}" >> ./pkg/station.sh
 	chmod +x ./pkg/station.sh
 
+	cp ./station.service ./pkg/station.service
+
+	cp ./install.sh ./pkg/install.sh
+	chmod +x ./pkg/station.sh
+
+	touch ./pkg/db.sqlite
+	chmod 777 ./pkg/db.sqlite
