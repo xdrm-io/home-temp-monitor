@@ -13,6 +13,8 @@ class Sensor {
 		Sensor(const uint8_t pin, const uint8_t type);
 		~Sensor();
 
+		void setup();
+
 		SensorData read();
 
 	private:

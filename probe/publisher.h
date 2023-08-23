@@ -4,7 +4,7 @@
 #include "wireless.h"
 #include <PubSubClient.h>
 
-#define PUB_BUF_SIZE 32
+#define PUB_BUF_SIZE 5
 
 class Publisher {
 	public:

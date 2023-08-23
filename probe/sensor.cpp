@@ -7,6 +7,10 @@ Sensor::Sensor(const uint8_t pin, const uint8_t type)
 Sensor::~Sensor(){
 }
 
+void Sensor::setup(){
+	m_sensor.begin();
+}
+
 SensorData Sensor::read(){
 	SensorData data;
 
