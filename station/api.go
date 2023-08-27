@@ -17,19 +17,23 @@ type service struct {
 	storage Storage
 }
 
-func NewServer(storage Storage) http.Handler {
+func NewAPI(storage Storage) http.Handler {
 	return &service{storage: storage}
 }
 
 // ServeHTTP implements http.Handler
 func (s *service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	if r.Method == http.MethodOptions {
+		// allow CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	if r.URL.Path != "/" {
-		w.WriteHeader(http.StatusNotFound)
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 

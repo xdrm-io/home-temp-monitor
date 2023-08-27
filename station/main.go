@@ -37,10 +37,12 @@ func main() {
 		log.Fatalf("cannot subscribe: %v", err)
 	}
 
-	// launch http server
-	server := NewServer(storage)
+	mux := http.NewServeMux()
+	mux.Handle("/api/", NewAPI(storage))
+	mux.Handle("/", NewStaticSite())
+
 	log.Printf("listening on %s", ":8080")
-	if err := http.ListenAndServe(":8080", server); err != nil {
+	if err := http.ListenAndServe(":8080", mux); err != nil {
 		log.Fatalf("http server: %v", err)
 	}
 }
