@@ -44,13 +44,13 @@ void loop() {
 		return;
 	}
 	Measure m;
-	m.timestamp = millis() % 1000;
+	m.timestamp = millis();
 	m.temperature = data.temperature;
 	m.humidity = data.humidity;
 
 	Serial.print("[sensor] ");
-	Serial.print(m.temperature);
+	Serial.print(m.temperature/10.);
 	Serial.print(" / ");
-	Serial.println(m.humidity);
+	Serial.println(m.humidity/10.);
 	publisher.publish(ROOM_ID, m);
 }
