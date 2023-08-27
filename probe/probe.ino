@@ -20,6 +20,8 @@ void setup(){
 	randomSeed(micros());
 
 	Serial.begin(115200);
+	while( !Serial.availableForWrite() ){ delay(100); }
+	delay(100);
 	Serial.println();
 	wireless.setup();
 	wireless.reconnect();
