@@ -7,19 +7,20 @@ import (
 	"regexp"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/xdrm-io/home-temp-monitor/storage"
 )
 
 // Collector collects data from the MQTT broker.
 type Collector struct {
 	cnf     Config
 	cli     mqtt.Client
-	storage Storage
+	storage storage.Storage
 }
 
-func NewCollector(cnf Config, storage Storage) (*Collector, error) {
+func NewCollector(cnf Config, s storage.Storage) (*Collector, error) {
 	return &Collector{
 		cnf:     cnf,
-		storage: storage,
+		storage: s,
 	}, nil
 }
 func (c *Collector) Close() {
@@ -61,7 +62,7 @@ func (c *Collector) onReceive(client mqtt.Client, msg mqtt.Message) {
 	}
 	roomID := matches[1]
 
-	var m Measure
+	var m storage.Measure
 	m.Room = roomID
 	if err := json.Unmarshal(msg.Payload(), &m); err != nil {
 		log.Printf("error: cannot read json: %v", err)

@@ -4,6 +4,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/xdrm-io/home-temp-monitor/endpoint"
+	"github.com/xdrm-io/home-temp-monitor/storage"
 )
 
 func env(key string) string {
@@ -20,14 +23,14 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	storage, err := NewStorage(cnf.DBPath)
+	db, err := storage.NewDB(cnf.DBPath)
 	if err != nil {
 		log.Fatalf("storage: %v", err)
 	}
-	defer storage.Close()
+	defer db.Close()
 
 	// launch mqtt persistent collector
-	collector, err := NewCollector(*cnf, storage)
+	collector, err := NewCollector(*cnf, db)
 	if err != nil {
 		log.Fatalf("collector: %v", err)
 	}
@@ -37,9 +40,10 @@ func main() {
 		log.Fatalf("cannot subscribe: %v", err)
 	}
 
+	// setup http endpoint
 	mux := http.NewServeMux()
-	mux.Handle("/api/", NewAPI(storage))
-	mux.Handle("/", NewStaticSite())
+	mux.Handle("/api/", endpoint.NewAPI(db))
+	mux.Handle("/", endpoint.NewStaticSite())
 
 	log.Printf("listening on %s", ":8080")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
