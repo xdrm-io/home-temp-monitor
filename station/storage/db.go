@@ -56,24 +56,32 @@ func (s *DB) Append(ctx context.Context, m Measure) error {
 }
 
 func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries, error) {
-	var grouping = "%Y-%m-%d %H:%M"
+	var (
+		grouping = "%Y-%m-%d %H:%M"
+		suffix   = ":00"
+	)
 	switch by {
 	case ByMin:
 		grouping = "%Y-%m-%d %H:%M"
+		suffix = ":00"
 	case ByHour:
 		grouping = "%Y-%m-%d %H"
+		suffix = ":00:00"
 	case ByDay:
 		grouping = "%Y-%m-%d"
+		suffix = " 00:00:00"
 	case ByMonth:
 		grouping = "%Y-%m"
+		suffix = "-01 00:00:00"
 	case ByYear:
 		grouping = "%Y"
+		suffix = "-01-01 00:00:00"
 	}
 
 	format := `
 	SELECT
-	room,
-		MIN(at) as t,
+		room,
+		unixepoch((strftime('%s', datetime(at, 'unixepoch')) || '%s')) as t,
 		MIN(temperature) as tmin,
 		AVG(temperature) as tavg,
 		MAX(temperature) as tmax,
@@ -83,15 +91,16 @@ func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries
 	FROM environment
 	WHERE at >= %d
 	  AND at <= %d
-	GROUP BY strftime('%s', datetime(at, 'unixepoch')), room
+	GROUP BY t, room
 	ORDER BY room, at ASC
 	LIMIT %d`
 
 	query := fmt.Sprintf(
 		format,
+		grouping,
+		suffix,
 		from.Unix(),
 		to.Unix(),
-		grouping,
 		MaxRows,
 	)
 	log.Printf("SQL query: %s", query)
