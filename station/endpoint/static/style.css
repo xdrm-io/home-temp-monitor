@@ -15,45 +15,29 @@ body {
 
 	background: #fff;
 }
-.highcharts-figure,
-.highcharts-data-table table {
-    min-width: 5em;
-    height: 50vh;
-    width: auto;
-    margin: 1em auto;
+
+#calendar {
+    display: block;
+    position: relative;
+    padding: 1em;
+
+    font-size: 1em;
 }
 
-.highcharts-data-table table {
-    font-family: Verdana, sans-serif;
-    border-collapse: collapse;
-    border: 1px solid #ebebeb;
-    margin: 10px auto;
-    text-align: center;
-    width: 100%;
-}
+#calendar input {
+    display: inline-block;
+    position: relative;
 
-.highcharts-data-table caption {
-    padding: 1em 0;
-    font-size: 1.2em;
-    color: #555;
-}
+    padding: .5em .5em;
+    margin: 0 1em;
 
-.highcharts-data-table th {
-    font-weight: 600;
-    padding: 0.5em;
-}
+    font-size: inherit;
 
-.highcharts-data-table td,
-.highcharts-data-table th,
-.highcharts-data-table caption {
-    padding: 0.5em;
+    border: 1px solid #ccc;
+    border-radius: .2rem / .2rem;
 }
-
-.highcharts-data-table thead tr,
-.highcharts-data-table tr:nth-child(even) {
-    background: #f8f8f8;
-}
-
-.highcharts-data-table tr:hover {
-    background: #f1f7ff;
+#calendar input[type=submit] {
+    font-weight: bold;
+    background: #eee;
+    cursor: pointer;
 }
