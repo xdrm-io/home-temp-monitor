@@ -7,24 +7,17 @@ import (
 	"net/http"
 )
 
-type staticSite struct {
-	h http.Handler
-}
+//go:embed static/*
+var staticFS embed.FS
 
-//go:embed static
-var staticFiles embed.FS
+// StaticWeb is a static web server from the embed static files
+type StaticWeb http.Handler
 
-func NewStaticSite() http.Handler {
-	fsys, err := fs.Sub(staticFiles, "static")
+// NewStaticWeb returns a new StaticWeb instance
+func NewStaticWeb() StaticWeb {
+	fsys, err := fs.Sub(staticFS, "static")
 	if err != nil {
-		log.Fatalf("failed to get sub fs: %v", err)
+		log.Fatalf("cannot load static files: %v", err)
 	}
-
-	return &staticSite{
-		h: http.FileServer(http.FS(fsys)),
-	}
-}
-
-func (s staticSite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.h.ServeHTTP(w, r)
+	return http.FileServer(http.FS(fsys))
 }

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/xdrm-io/home-temp-monitor/endpoint"
 	"github.com/xdrm-io/home-temp-monitor/storage"
 )
@@ -40,13 +42,19 @@ func main() {
 		log.Fatalf("cannot subscribe: %v", err)
 	}
 
-	// setup http endpoint
-	mux := http.NewServeMux()
-	mux.Handle("/api/", endpoint.NewAPI(db))
-	mux.Handle("/", endpoint.NewStaticSite())
+	var (
+		website = endpoint.NewStaticWeb()
+		api     = endpoint.NewAPI(db)
+	)
+
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+
+	router.Method("GET", "/api/*", api)
+	router.Method("GET", "/*", website)
 
 	log.Printf("listening on %s", ":8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", router); err != nil {
 		log.Fatalf("http server: %v", err)
 	}
 }
