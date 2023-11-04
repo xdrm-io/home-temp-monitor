@@ -1,0 +1,64 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	display: flex;
+	position: absolute;
+		top: 0;
+		left: 0;
+		height: 100%;
+		width: 100%;
+
+    color: #eee;
+	font-size: 16px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+	background: #1c2433;
+
+    justify-content: center;
+    align-items: center;
+}
+
+#current {
+    display: grid;
+    position: relative;
+
+    grid-template-columns: min-content min-content min-content;
+}
+
+.name {
+    display: block;
+    margin: 0 1em;
+
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.temp {
+    display: block;
+    margin: 0 1em;
+
+    color: #25a7ce;
+    font-size: 1em;
+    font-weight: bold;
+
+    line-break: strict;
+}
+.temp::after {
+    content: "°C";
+}
+.humidity {
+    display: block;
+    margin: 0 1em;
+
+    color: #ff9900;
+    font-size: 1em;
+    font-weight: bold;
+
+    line-break: strict;
+}
+.humidity::after {
+    content: "%";
+}

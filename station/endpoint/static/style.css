@@ -41,3 +41,17 @@ body {
     background: #eee;
     cursor: pointer;
 }
+
+#current {
+    display: inline-block;
+    position: relative;
+    margin: 1em 2em;
+
+    color: #000;
+    text-decoration: none;
+
+    padding: .8em;
+    border-radius: .3rem / .3rem;
+    background-color: #eee;
+    border: 1px solid #ccc;
+}
