@@ -2,18 +2,22 @@
 	<AppHeader/>
 
 	<CurrentList/>
+
+	<TimeSeries/>
 </template>
 
 
 <script lang='ts'>
 import { Options, Vue } from 'vue-class-component';
-import AppHeader from './components/AppHeader.vue';
+import AppHeader   from './components/AppHeader.vue';
 import CurrentList from './components/CurrentList.vue';
+import TimeSeries  from './components/TimeSeries.vue';
 
 @Options({
 	components: {
 		AppHeader,
-		CurrentList
+		CurrentList,
+		TimeSeries,
 	}
 })
 

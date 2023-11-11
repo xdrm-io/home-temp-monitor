@@ -129,7 +129,7 @@ export default class CurrentList extends Vue {
 		// fetch last 1 hour
 		params.append('from', (Math.round(Date.now() / 1000) - 3600).toString())
 		// by second
-		params.append('by', 'minute')
+		params.append('by', 'second')
 		return new Promise( (resolve, reject) => {
 
 			interface Response {
