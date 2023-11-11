@@ -2,7 +2,7 @@
 include .env
 export $(sed 's/=.*//' .env)
 
-.PHONY: build run package
+.PHONY: build web run package
 
 build:
 	go build -ldflags '-s -w' -o station .
@@ -10,7 +10,10 @@ build:
 run:
 	./station "${BROKER_ADDR}" "${BROKER_USER}" "${BROKER_PASS}" "${MQTT_TOPIC}" "${DB_PATH}"
 
-package:
+web:
+	yarn --cwd endpoint/web && yarn --cwd endpoint/web build
+
+package: web
 	rm -rf ./pkg
 	mkdir -p ./pkg
 
