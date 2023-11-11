@@ -32,6 +32,7 @@
 
 <script lang='ts'>
 import { Vue } from 'vue-class-component';
+import { CONFIG } from '../config'
 
 interface Room {
 	offline:     boolean|undefined;
@@ -139,7 +140,7 @@ export default class CurrentList extends Vue {
 				}[]
 			}
 
-			fetch(`/api/?${params.toString()}`).then( (response) => response.json() ).then( (data: Response) => {
+			fetch(`${CONFIG.api_url}/?${params.toString()}`).then( (response) => response.json() ).then( (data: Response) => {
 				// get last data for each room
 				let lastUpdate: Date|undefined;
 
