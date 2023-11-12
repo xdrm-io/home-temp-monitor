@@ -34,6 +34,16 @@ type Entry struct {
 	HumMax    float32 `json:"hmax"`
 }
 
+// LastEntry as returned by the storage GetLast() method
+type LastEntry struct {
+	Timestamp   int64   `json:"t"`
+	Temperature float32 `json:"temperature"`
+	Humidity    float32 `json:"humidity"`
+}
+
+// LastEntries indexed by room id
+type LastEntries map[string]LastEntry
+
 type TimeBy string
 
 // avail time grouping
@@ -73,6 +83,7 @@ func (t TimeBy) Duration() time.Duration {
 type Storage interface {
 	GetAll(ctx context.Context, from, to time.Time, by TimeBy, rooms []string) (Entries, error)
 	GetRooms(ctx context.Context, from time.Time) ([]string, error)
+	GetLast(ctx context.Context) (LastEntries, error)
 
 	Append(ctx context.Context, m Measure) error
 	io.Closer

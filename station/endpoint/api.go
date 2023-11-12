@@ -27,6 +27,7 @@ func NewAPI(s storage.Storage) Service {
 func (s *service) Wire(r chi.Router) {
 	r.MethodFunc("GET", "/series", s.getSeries)
 	r.MethodFunc("GET", "/rooms", s.getRooms)
+	r.MethodFunc("GET", "/last", s.getLast)
 
 }
 
@@ -158,6 +159,7 @@ func (s *service) getSeries(w http.ResponseWriter, r *http.Request) {
 		log.Printf("cannot encode entries: %v", err)
 	}
 }
+
 func (s *service) getRooms(w http.ResponseWriter, r *http.Request) {
 	log.Printf("GetRooms()")
 
@@ -172,5 +174,21 @@ func (s *service) getRooms(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(rooms); err != nil {
 		log.Printf("cannot encode rooms: %v", err)
+	}
+}
+func (s *service) getLast(w http.ResponseWriter, r *http.Request) {
+	log.Printf("GetLast()")
+
+	last, err := s.storage.GetLast(r.Context())
+	if err != nil {
+		log.Printf("cannot get last: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(last); err != nil {
+		log.Printf("cannot encode last: %v", err)
 	}
 }

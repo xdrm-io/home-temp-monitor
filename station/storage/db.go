@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -189,4 +190,50 @@ func (s *DB) GetRooms(ctx context.Context, from time.Time) ([]string, error) {
 		list = append(list, room)
 	}
 	return list, nil
+}
+
+func (s *DB) GetLast(ctx context.Context) (LastEntries, error) {
+	// only consider measures from the last 3 days
+	limit := 3 * 24 * time.Hour
+
+	query := `
+	SELECT
+		room,
+		MAX(unixepoch(datetime(at, 'unixepoch'))) as t,
+		temperature,
+		humidity
+	FROM environment
+	WHERE at >= ` + strconv.FormatInt(time.Now().Add(-limit).Unix(), 10) + `
+	GROUP BY room`
+	log.Printf("SQL query: %s", query)
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err == sql.ErrNoRows {
+		log.Printf("sql: no rows")
+		return nil, nil
+	}
+	if err != nil {
+		log.Printf("sql: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	entries := make(LastEntries, 0)
+	for rows.Next() {
+		var (
+			room string
+			e    LastEntry
+		)
+		err := rows.Scan(
+			&room,
+			&e.Timestamp,
+			&e.Temperature,
+			&e.Humidity,
+		)
+		if err != nil {
+			return nil, err
+		}
+		entries[room] = e
+	}
+	return entries, nil
 }
