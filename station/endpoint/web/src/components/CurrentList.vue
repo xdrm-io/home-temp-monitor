@@ -33,6 +33,7 @@
 <script lang='ts'>
 import { Vue } from 'vue-class-component';
 import client from '@/api/client';
+import Queue from '@/service/error';
 
 interface Room {
 	offline:     boolean|undefined;
@@ -116,13 +117,10 @@ export default class CurrentList extends Vue {
 	private refresh() {
 		this.fetchCurrent().
 		then(() => {
+			Queue.info("Current data refreshed")
 			this.scheduleRefresh
 		})
-		.catch( (error) => {
-			if( error !== undefined ) {
-				console.error(error);
-			}
-		});
+		.catch( err => Queue.raise(err) );
 	}
 
 	private fetchCurrent() : Promise<void> {

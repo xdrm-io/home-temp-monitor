@@ -34,7 +34,8 @@
 
 <script lang='ts'>
 import { Vue } from 'vue-class-component';
-import client from '../api/client'
+import client, {SeriesResponse} from '../api/client'
+import Queue from '@/service/error';
 
 enum Frequency {
 	Second = 'second',
@@ -59,6 +60,8 @@ interface Series {
 	}[];
 }
 
+const LOAD_DELAY_MS = 2*1000;
+
 export default class TimeSeries extends Vue {
 	public readonly Frequencies: Frequency[] = [Frequency.Second, Frequency.Minute, Frequency.Hour, Frequency.Day];
 	public rooms: string[] = [];
@@ -68,47 +71,59 @@ export default class TimeSeries extends Vue {
 		to: new Date(),
 		rooms: {},
 	};
-	public series: { [name:string]: Series } = {};
+	public series: SeriesResponse = {};
+
+	private timeout: number|undefined = undefined;
 
 	public mounted() {
 		client.getRoomNames()
-		.then( (rooms) => { this.rooms = rooms; })
-		.catch( console.error );
+		.then( (rooms) => {
+			this.rooms = rooms;
+			this.query.rooms = {};
+			for( const name of rooms ){
+				this.query.rooms[name] = true;
+			}
+		})
+		.catch( (err) => Queue.raise(err) );
 	}
 
 	public onChange() {
-		this.fetchCurrent()
+		this.delayFetch();
 	}
 
-	private fetchCurrent() : string {
+	private delayFetch() {
+		if( this.timeout !== undefined ) {
+			clearTimeout(this.timeout);
+		}
+		this.timeout = setTimeout( () => {
+			this.timeout = undefined;
+			this.fetchSeries().catch( err => Queue.raise(err) );
+		}, LOAD_DELAY_MS);
+	}
+
+	private fetchSeries() : Promise<void> {
 		const from  = this.query.from ? new Date(this.query.from) : undefined;
 		const to    = this.query.to ? new Date(this.query.to) : undefined;
 		const by    = this.query.by;
 		const rooms = Object.keys(this.query.rooms).filter( (name) => this.query.rooms[name] === true ) ?? this.rooms;
 		const ref   = this.query.ref || '';
 
-		if( !by ){
-			return "by is required";
-		}
-
-		const query = new URLSearchParams();
-		if( from !== undefined ) {
-			query.set('from', Math.round(from.getTime()/1000).toString());
-		}
-		if( to !== undefined ) {
-			query.set('to', Math.round(to.getTime()/1000).toString());
-		}
-		if( rooms.length > 0 ) {
-			for( const room of rooms ){
-				query.append('rooms', room);
+		return new Promise<void>( (resolve, reject) => {
+			if( from === undefined ){
+				reject(new Error("from is required"));
+				return;
 			}
-		}
-		if( ref ) {
-			query.set('ref', ref);
-		}
-		query.set('by', by);
-		console.debug(query.toString())
-		return "";
+			if( by === undefined ){
+				reject(new Error("by is required"));
+				return;
+			}
+			client.getSeries({ from, to, by, rooms, ref })
+				.then( (series) => {
+					this.series = series;
+					resolve();
+				})
+				.catch(reject);
+		});
 	}
 
 }

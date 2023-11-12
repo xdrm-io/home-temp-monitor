@@ -1,9 +1,8 @@
 <template>
-	<AppHeader/>
-
-	<CurrentList/>
-
-	<TimeSeries/>
+	<error-queue/>
+	<app-header/>
+	<current-list/>
+	<time-series/>
 </template>
 
 
@@ -12,12 +11,14 @@ import { Options, Vue } from 'vue-class-component';
 import AppHeader   from './components/AppHeader.vue';
 import CurrentList from './components/CurrentList.vue';
 import TimeSeries  from './components/TimeSeries.vue';
+import ErrorQueue  from './components/ErrorQueue.vue';
 
 @Options({
 	components: {
 		AppHeader,
 		CurrentList,
 		TimeSeries,
+		ErrorQueue,
 	}
 })
 

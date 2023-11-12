@@ -20,7 +20,7 @@ export enum Frequency {
 }
 export const Frequencies: Frequency[] = [Frequency.Second, Frequency.Minute, Frequency.Hour, Frequency.Day];
 
-interface SeriesRequest {
+export interface SeriesRequest {
 	from: Date;
 	to?: Date;
 	by: Frequency;
@@ -28,7 +28,7 @@ interface SeriesRequest {
 	ref?: string;
 }
 
-type SeriesResponse = {
+export type SeriesResponse = {
 	[room_name: string]: {
 		t: number;
 		tavg: number;
