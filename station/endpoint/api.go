@@ -31,10 +31,11 @@ func (s *service) Wire(r chi.Router) {
 }
 
 type seriesReq struct {
-	Rooms []string
-	From  time.Time
-	To    time.Time
-	By    storage.TimeBy
+	Rooms   []string
+	From    time.Time
+	To      time.Time
+	By      storage.TimeBy
+	RefRoom *string
 }
 
 // Parse Request from http.Request
@@ -61,8 +62,12 @@ func (req *seriesReq) Parse(r *http.Request) error {
 	if err := sBy.OK(); err == nil {
 		req.By = sBy
 	}
-
 	req.Rooms = q["rooms"]
+
+	if q.Get("ref") != "" {
+		ref := q.Get("ref")
+		req.RefRoom = &ref
+	}
 
 	// fail if too much values are requested
 	if req.To.Sub(req.From) > storage.MaxRows*req.By.Duration() {
@@ -75,29 +80,82 @@ func (s *service) getSeries(w http.ResponseWriter, r *http.Request) {
 	req := &seriesReq{}
 	if err := req.Parse(r); err != nil {
 		log.Printf("invalid request: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	log.Printf("GetSeries(%s, %s, %v, %v)", req.From.Format(time.RFC3339), req.To.Format(time.RFC3339), req.By, req.Rooms)
+
+	// ensure ref room is in rooms
+	if req.RefRoom != nil {
+		var found bool
+		for _, r := range req.Rooms {
+			if r == *req.RefRoom {
+				found = true
+				break
+			}
+		}
+		if !found {
+			req.Rooms = append(req.Rooms, *req.RefRoom)
+		}
+	}
 
 	var (
 		entries storage.Entries
 		err     error
 	)
 	entries, err = s.storage.GetAll(r.Context(), req.From, req.To, req.By, req.Rooms)
-
 	if err != nil {
 		log.Printf("cannot get entries: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// no reference room, return
+	if req.RefRoom == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(entries); err != nil {
+			log.Printf("cannot encode entries: %v", err)
+		}
+		return
+	}
+
+	// ref room, compute delta
+	ref, ok := entries[*req.RefRoom]
+	if !ok {
+		log.Printf("ref room not found in entries")
+		http.Error(w, "ref room not found in entries", http.StatusBadRequest)
+		return
+	}
+
+	relative := make(storage.Entries, len(entries))
+	for room, series := range entries {
+		if room == *req.RefRoom {
+			continue
+		}
+		if len(series) != len(ref) {
+			log.Printf("series length mismatch: [%s] %d != [%s] %d", room, len(series), *req.RefRoom, len(ref))
+			http.Error(w, "series length mismatch", http.StatusBadRequest)
+			return
+		}
+		relative[room] = make([]storage.Entry, len(series))
+		for i, data := range series {
+			relative[room] = append(relative[room], storage.Entry{
+				Timestamp: data.Timestamp,
+				TempMin:   data.TempMin - ref[i].TempMin,
+				TempAvg:   data.TempAvg - ref[i].TempAvg,
+				TempMax:   data.TempMax - ref[i].TempMax,
+				HumMin:    data.HumMin - ref[i].HumMin,
+				HumAvg:    data.HumAvg - ref[i].HumAvg,
+				HumMax:    data.HumMax - ref[i].HumMax,
+			})
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(entries); err != nil {
+	if err := json.NewEncoder(w).Encode(relative); err != nil {
 		log.Printf("cannot encode entries: %v", err)
-		return
 	}
 }
 func (s *service) getRooms(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +164,7 @@ func (s *service) getRooms(w http.ResponseWriter, r *http.Request) {
 	rooms, err := s.storage.GetRooms(r.Context(), time.Now().Add(-30*24*time.Hour))
 	if err != nil {
 		log.Printf("cannot get rooms: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -114,6 +172,5 @@ func (s *service) getRooms(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(rooms); err != nil {
 		log.Printf("cannot encode rooms: %v", err)
-		return
 	}
 }
