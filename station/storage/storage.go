@@ -10,7 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const MaxRows = 5000
+const MaxRows = 50000
 
 // Measure as received from the sensor
 type Measure struct {
@@ -71,8 +71,8 @@ func (t TimeBy) Duration() time.Duration {
 }
 
 type Storage interface {
-	GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries, error)
-	GetRooms(ctx context.Context, from, to time.Time, by TimeBy, rooms []string) (Entries, error)
+	GetAll(ctx context.Context, from, to time.Time, by TimeBy, rooms []string) (Entries, error)
+	GetRooms(ctx context.Context, from time.Time) ([]string, error)
 
 	Append(ctx context.Context, m Measure) error
 	io.Closer

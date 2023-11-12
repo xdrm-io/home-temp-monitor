@@ -42,15 +42,25 @@ func main() {
 		log.Fatalf("cannot subscribe: %v", err)
 	}
 
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Expose-Headers", "Link")
+			next.ServeHTTP(w, r)
+		})
+	})
+
 	var (
 		website = endpoint.NewStaticWeb()
 		api     = endpoint.NewAPI(db)
 	)
-
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-
-	router.Method("GET", "/api/*", api)
+	router.Route("/api", func(r chi.Router) {
+		r.Use(middleware.SetHeader("Content-Type", "application/json"))
+		api.Wire(r)
+	})
 	router.Method("GET", "/*", website)
 
 	log.Printf("listening on %s", ":8080")

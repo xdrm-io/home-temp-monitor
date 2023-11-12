@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -55,7 +56,7 @@ func (s *DB) Append(ctx context.Context, m Measure) error {
 	return err
 }
 
-func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries, error) {
+func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy, rooms []string) (Entries, error) {
 	var (
 		grouping = "%Y-%m-%d %H:%M"
 		suffix   = ":00"
@@ -78,6 +79,11 @@ func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries
 		suffix = "-01-01 00:00:00"
 	}
 
+	var roomFilter string
+	if len(rooms) > 0 {
+		roomFilter = fmt.Sprintf("AND room IN ('%s')", strings.Join(rooms, "', '"))
+	}
+
 	format := `
 	SELECT
 		room,
@@ -91,6 +97,7 @@ func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries
 	FROM environment
 	WHERE at >= %d
 	  AND at <= %d
+	  %s
 	GROUP BY t, room
 	ORDER BY room, at ASC
 	LIMIT %d`
@@ -101,6 +108,7 @@ func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries
 		suffix,
 		from.Unix(),
 		to.Unix(),
+		roomFilter,
 		MaxRows,
 	)
 	log.Printf("SQL query: %s", query)
@@ -141,26 +149,44 @@ func (s *DB) GetAll(ctx context.Context, from, to time.Time, by TimeBy) (Entries
 	return entries, nil
 }
 
-func (s *DB) GetRooms(ctx context.Context, from, to time.Time, by TimeBy, rooms []string) (Entries, error) {
-	entries, err := s.GetAll(ctx, from, to, by)
+func (s *DB) GetRooms(ctx context.Context, from time.Time) ([]string, error) {
+	query := fmt.Sprintf(`
+		SELECT DISTINCT room
+		FROM environment
+		WHERE at >= %d
+		GROUP BY room
+		ORDER BY room ASC
+		LIMIT %d`,
+		from.Unix(),
+		MaxRows,
+	)
+	log.Printf("SQL query: %s", query)
+
+	// get all rooms for every room
+	rows, err := s.db.QueryContext(ctx, query)
+	if err == sql.ErrNoRows {
+		log.Printf("sql: no rows")
+		return nil, nil
+	}
 	if err != nil {
+		log.Printf("sql: %v", err)
 		return nil, err
 	}
+	defer rows.Close()
 
-	// filter entries by room
-	filtered := make(Entries, 0)
-	for room, e := range entries {
-		var found bool
-		for _, r := range rooms {
-			if room == r {
-				found = true
-				break
-			}
+	rooms := map[string]struct{}{}
+	for rows.Next() {
+		var room string
+		err := rows.Scan(&room)
+		if err != nil {
+			return nil, err
 		}
-		if !found {
-			continue
-		}
-		filtered[room] = e
+		rooms[room] = struct{}{}
 	}
-	return filtered, nil
+
+	list := make([]string, 0, len(rooms))
+	for room := range rooms {
+		list = append(list, room)
+	}
+	return list, nil
 }
