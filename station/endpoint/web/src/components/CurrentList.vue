@@ -3,7 +3,7 @@
 		<h1>Current</h1>
 		<h2>{{ lastUpdateInMinutes(updatedAt) }} min ago</h2>
 		<div class='cards'>
-			<div class='card' v-for='(room, name) in rooms' :key='name'>
+			<div :class="ref === name ? 'card ref' : 'card'" v-for='(room, name) in rooms' :key='name' @click='setRef(name.toString())'>
 				<h3 :class="room.offline === true ? 'offline' : ''">{{ name }}</h3>
 				<div class='grid'>
 					<img src='@/assets/temperature.svg' alt='temperature' class='temperature-icon'/>
@@ -11,8 +11,8 @@
 					<div class='temperature-value'>
 						{{ room.temperature }}°C
 					</div>
-					<div class='temperature-diff' :class="'temperature-diff ' + diffClass(room.diff.temperature)" >
-						{{ Math.abs(room.diff.temperature) }}°C
+					<div class='temperature-diff' :class="'temperature-diff ' + diffClass(diff(room).temperature)" v-show='ref !== name'>
+						{{ Math.abs(diff(room).temperature) }}°C
 					</div>
 
 					<img src='@/assets/humidity.svg' alt='humidity' class='humidity-icon'/>
@@ -20,8 +20,8 @@
 					<div class='humidity-value'>
 						{{ room.humidity }}%
 					</div>
-					<div class='humidity-diff' :class="'humidity-diff ' + diffClass(room.diff.humidity)" >
-						{{ Math.abs(room.diff.humidity) }}%
+					<div class='humidity-diff' :class="'humidity-diff ' + diffClass(diff(room).humidity)" v-show='ref !== name'>
+						{{ Math.abs(diff(room).humidity) }}%
 					</div>
 				</div>
 			</div>
@@ -39,10 +39,6 @@ interface Room {
 	offline:     boolean|undefined;
 	temperature: number;
 	humidity:    number;
-	diff: {
-		temperature: number;
-		humidity:    number;
-	}
 }
 
 interface LocalStorageData {
@@ -55,8 +51,35 @@ const INITIAL_INTERVAL_MS = 1000;
 const REFRESH_INTERVAL_MS = 60*1000;
 
 export default class CurrentList extends Vue {
-	public updatedAt: Date|undefined          = undefined;
-	public rooms:     { [name:string]: Room } = {};
+	public updatedAt?: Date                    = undefined;
+	public rooms:      { [name:string]: Room } = {};
+
+	// room for comparison
+	public ref = '';
+
+	public diff(r: Room): Room {
+		const ref = this.rooms[this.ref];
+		if( ref === undefined ) {
+			return {
+				offline:     r.offline,
+				temperature: 0,
+				humidity:    0,
+			}
+		}
+		return {
+			offline:     r.offline,
+			temperature: Math.round(100 * (r.temperature - ref.temperature))/100,
+			humidity:    Math.round(100 * (r.humidity    - ref.humidity))/100,
+		}
+	}
+
+	public setRef(name: string) {
+		if( this.ref === name ){
+			this.ref = '';
+		} else {
+			this.ref = name;
+		}
+	}
 
 	private restore(): LocalStorageData|undefined {
 		if( !window.localStorage ){
@@ -102,10 +125,6 @@ export default class CurrentList extends Vue {
 
 		this.updatedAt = restored.updatedAt ? new Date(restored.updatedAt) : undefined;
 		this.rooms = restored.rooms;
-		// clear diffs
-		for( const room in this.rooms ){
-			this.rooms[room].diff = { temperature: 0, humidity: 0 };
-		}
 		setTimeout(this.refresh, INITIAL_INTERVAL_MS);
 
 	}
@@ -135,17 +154,12 @@ export default class CurrentList extends Vue {
 								offline: false,
 								temperature: res.rooms[room].temperature,
 								humidity:    res.rooms[room].humidity,
-								diff: { temperature: 0, humidity: 0 }
 							}
 							continue;
 						}
 						this.rooms[room].offline = false;
 						this.rooms[room].temperature = res.rooms[room].temperature;
 						this.rooms[room].humidity    = res.rooms[room].humidity;
-						this.rooms[room].diff = {
-							temperature: Math.round(100* (res.rooms[room].temperature - this.rooms[room].temperature)) / 100,
-							humidity:    Math.round(100* (res.rooms[room].humidity    - this.rooms[room].humidity)) / 100
-						}
 					}
 
 					// mark missing rooms as offline
@@ -224,8 +238,11 @@ export default class CurrentList extends Vue {
 			margin-right: 0;
 		}
 
+		border: 1px solid #eee;
 		border-radius: 1rem / 1rem;
 		background: linear-gradient(to right bottom, #fcfcfc, #eeeeee);
+
+		user-select: none;
 
 		cursor: pointer;
 		transition: .2s ease-in-out box-shadow,
@@ -233,6 +250,9 @@ export default class CurrentList extends Vue {
 		&:hover {
 			box-shadow: 0 0 2em rgba(0,0,0,.2);
 			transform: scale(1.05);
+		}
+		&.ref {
+			border: 1px solid #3069fe;
 		}
 
 		h3 {
