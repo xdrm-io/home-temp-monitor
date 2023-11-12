@@ -32,7 +32,7 @@
 
 <script lang='ts'>
 import { Vue } from 'vue-class-component';
-import { CONFIG } from '../config'
+import client from '@/api/client';
 
 interface Room {
 	offline:     boolean|undefined;
@@ -115,7 +115,9 @@ export default class CurrentList extends Vue {
 
 	private refresh() {
 		this.fetchCurrent().
-		then(this.scheduleRefresh)
+		then(() => {
+			this.scheduleRefresh
+		})
 		.catch( (error) => {
 			if( error !== undefined ) {
 				console.error(error);
@@ -124,82 +126,50 @@ export default class CurrentList extends Vue {
 	}
 
 	private fetchCurrent() : Promise<void> {
-		// proxy query parameters to the api
-		const params = new URLSearchParams()
-		// fetch last 1 hour
-		params.append('from', (Math.round(Date.now() / 1000) - 3600).toString())
-		// by second
-		params.append('by', 'second')
 		return new Promise( (resolve, reject) => {
 
-			interface Response {
-				[key: string]: {
-					t: number;
-					tavg: number;
-					havg: number;
-				}[]
-			}
-
-			fetch(`${CONFIG.api_url}/?${params.toString()}`).then( (response) => response.json() ).then( (data: Response) => {
-				// get last data for each room
-				let lastUpdate: Date|undefined;
-
-				const current: { [name:string]: Room } = {};
-				for( const room in data ) {
-					const series = data[room].sort( (a, b) => a.t - b.t );
-					if( series.length === 0 ) {
-						continue
+			client.getCurrent()
+				.then( (res) => {
+					// update and calculate diff
+					for( const room in res.rooms ){
+						if( this.rooms[room] === undefined ) {
+							this.rooms[room] = {
+								offline: false,
+								temperature: res.rooms[room].temperature,
+								humidity:    res.rooms[room].humidity,
+								diff: { temperature: 0, humidity: 0 }
+							}
+							continue;
+						}
+						this.rooms[room].offline = false;
+						this.rooms[room].temperature = res.rooms[room].temperature;
+						this.rooms[room].humidity    = res.rooms[room].humidity;
+						this.rooms[room].diff = {
+							temperature: Math.round(100* (res.rooms[room].temperature - this.rooms[room].temperature)) / 100,
+							humidity:    Math.round(100* (res.rooms[room].humidity    - this.rooms[room].humidity)) / 100
+						}
 					}
 
-					const last = series[series.length-1];
-					if( lastUpdate === undefined ){
-						lastUpdate = new Date(last.t*1000);
-					} else {
-						lastUpdate = new Date(Math.max(lastUpdate.getTime(), last.t*1000));
+					// mark missing rooms as offline
+					for( const room in this.rooms ){
+						if( res.rooms[room] === undefined ) {
+							this.rooms[room].offline = true;
+						}
 					}
 
-					current[room] = {
-						offline: true,
-						temperature: Math.floor(100*last.tavg)/100,
-						humidity:    Math.floor(100*last.havg)/100,
-						diff: { temperature: 0, humidity: 0 }
-					}
-				}
+					this.updatedAt = res.lastUpdate;
 
-				// update and calculate diff
-				for( const room in current ){
-					if( this.rooms[room] === undefined ) {
-						this.rooms[room] = current[room];
-						continue;
-					}
-					this.rooms[room].offline = false;
-					this.rooms[room].temperature = current[room].temperature;
-					this.rooms[room].humidity    = current[room].humidity;
-					this.rooms[room].diff = {
-						temperature: Math.round(100* (current[room].temperature - this.rooms[room].temperature)) / 100,
-						humidity:    Math.round(100* (current[room].humidity    - this.rooms[room].humidity)) / 100
-					}
-				}
+					// store in local storage if we refresh the page
+					this.save({
+						updatedAt: res.lastUpdate,
+						rooms: this.rooms
+					});
+					resolve();
+				})
+				.catch( (error) => {
+					reject(error);
+				})
 
-				// mark missing rooms as offline
-				for( const room in this.rooms ){
-					if( current[room] === undefined ) {
-						this.rooms[room].offline = true;
-					}
-				}
-
-				this.updatedAt = lastUpdate;
-
-				// store in local storage if we refresh the page
-				this.save({
-					updatedAt: lastUpdate,
-					rooms: this.rooms
-				});
-
-				resolve();
-			}).catch( (error) => {
-				reject(error);
-			})
 		});
 	}
 

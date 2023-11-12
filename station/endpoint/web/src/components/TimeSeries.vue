@@ -33,8 +33,8 @@
 
 
 <script lang='ts'>
-import { Options, Vue } from 'vue-class-component';
-import { CONFIG } from '../config'
+import { Vue } from 'vue-class-component';
+import client from '../api/client'
 
 enum Frequency {
 	Second = 'second',
@@ -61,8 +61,7 @@ interface Series {
 
 export default class TimeSeries extends Vue {
 	public readonly Frequencies: Frequency[] = [Frequency.Second, Frequency.Minute, Frequency.Hour, Frequency.Day];
-	// TODO: fetch from parent event
-	public rooms: 	string[] = ["chambre", "salon", "cuisine", "sdb", "grenier", "bureau"];
+	public rooms: string[] = [];
 
 	public query: Query = {
 		by: Frequency.Hour,
@@ -71,6 +70,11 @@ export default class TimeSeries extends Vue {
 	};
 	public series: { [name:string]: Series } = {};
 
+	public mounted() {
+		client.getRoomNames()
+		.then( (rooms) => { this.rooms = rooms; })
+		.catch( console.error );
+	}
 
 	public onChange() {
 		this.fetchCurrent()
