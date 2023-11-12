@@ -28,12 +28,23 @@ export interface SeriesRequest {
 	ref?: string;
 }
 
-export type SeriesResponse = {
+export type LastSeriesResponse = {
 	[room_name: string]: {
 		t:           number;
 		temperature: number;
 		humidity:    number;
 	}
+}
+export type SeriesResponse = {
+	[room_name: string]: {
+		t:    number;
+		tmin: number;
+		tavg: number;
+		tmax: number;
+		hmin: number;
+		havg: number;
+		hmax: number;
+	}[]
 }
 
 
@@ -52,7 +63,7 @@ class ClientClass {
 	public getCurrent() : Promise<Current> {
 		const url = `${CONFIG.api_url}/last`;
 		return new Promise( (resolve, reject) => {
-			fetch(url).then( (response) => response.json() ).then( (data: SeriesResponse) => {
+			fetch(url).then( (response) => response.json() ).then( (data: LastSeriesResponse) => {
 				const current: Current = {
 					lastUpdate: undefined,
 					rooms: {}
@@ -78,9 +89,9 @@ class ClientClass {
 	}
 	public getSeries(req: SeriesRequest) : Promise<SeriesResponse> {
 		const params = new URLSearchParams()
-		params.append('from', req.from.getTime().toString())
+		params.append('from', Math.floor(req.from.getTime()/1000).toString())
 		if( req.to !== undefined ) {
-			params.append('to', req.to.getTime().toString())
+			params.append('to', Math.floor(req.to.getTime()/1000).toString())
 		}
 		if( req.rooms !== undefined && req.rooms.length > 0 ){
 			for( const room of req.rooms ){
