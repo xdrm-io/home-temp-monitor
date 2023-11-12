@@ -1,6 +1,33 @@
 import { CONFIG } from "@/config";
 
 type RoomsResponse = string[];
+
+interface Current {
+	lastUpdate?: Date;
+	rooms: {
+		[room_name: string]: {
+			temperature: number;
+			humidity: number;
+		}
+	}
+}
+
+export enum Frequency {
+	Second = 'second',
+	Minute = 'minute',
+	Hour   = 'hour',
+	Day    = 'day',
+}
+export const Frequencies: Frequency[] = [Frequency.Second, Frequency.Minute, Frequency.Hour, Frequency.Day];
+
+interface SeriesRequest {
+	from: Date;
+	to?: Date;
+	by: Frequency;
+	rooms?: string[];
+	ref?: string;
+}
+
 type SeriesResponse = {
 	[room_name: string]: {
 		t: number;
@@ -11,16 +38,6 @@ type SeriesResponse = {
 		hmin: number;
 		hmax: number;
 	}[]
-}
-
-interface Current {
-	lastUpdate?: Date;
-	rooms: {
-		[room_name: string]: {
-			temperature: number;
-			humidity: number;
-		}
-	}
 }
 
 
@@ -69,6 +86,31 @@ class ClientClass {
 				}
 				resolve(current);
 			}).catch( (error) => {
+				reject(error);
+			})
+		});
+	}
+	public getSeries(req: SeriesRequest) : Promise<SeriesResponse> {
+		const params = new URLSearchParams()
+		params.append('from', req.from.getTime().toString())
+		if( req.to !== undefined ) {
+			params.append('to', req.to.getTime().toString())
+		}
+		if( req.rooms !== undefined && req.rooms.length > 0 ){
+			for( const room of req.rooms ){
+				params.append('rooms', room)
+			}
+		}
+		params.append('by', req.by)
+		if( req.ref !== undefined ) {
+			params.append('ref', req.ref)
+		}
+
+
+		const url = `${CONFIG.api_url}/series?${params.toString()}`;
+		return new Promise( (resolve, reject) => {
+			fetch(url).then( (response) => response.json() ).then( (res: SeriesResponse) => resolve(res) )
+			.catch( (error) => {
 				reject(error);
 			})
 		});
