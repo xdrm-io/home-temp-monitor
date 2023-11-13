@@ -28,6 +28,13 @@
 				<label :for='name'>{{ name }}</label>
 			</div>
 		</div>
+
+		<figure class="highcharts-figure">
+			<div ref='temperatureChart' />
+		</figure>
+		<figure class="humidity-figure">
+			<div ref='humidityChart' />
+		</figure>
 	</div>
 </template>
 
@@ -37,6 +44,10 @@ import { Vue } from 'vue-class-component';
 import client, {SeriesResponse} from '../api/client'
 import Queue from '@/service/error';
 
+import * as Highcharts from 'highcharts';
+import highchartsMore from 'highcharts/highcharts-more';
+highchartsMore(Highcharts);
+
 enum Frequency {
 	Second = 'second',
 	Minute = 'minute',
@@ -45,19 +56,11 @@ enum Frequency {
 }
 
 interface Query {
-	from?: Date;
-	to?:   Date;
+	from?: string;
+	to?:   string;
 	by?:   Frequency;
 	rooms: { [name:string]: boolean };
 	ref?: string;
-}
-
-interface Series {
-	name: string;
-	data: {
-		x: Date;
-		y: number;
-	}[];
 }
 
 const LOAD_DELAY_MS = 2*1000;
@@ -68,14 +71,19 @@ export default class TimeSeries extends Vue {
 
 	public query: Query = {
 		by: Frequency.Hour,
-		to: new Date(),
+		from: new Date(Date.now()-24*3600*1000).toLocaleDateString(),
 		rooms: {},
 	};
 	public series: SeriesResponse = {};
 
 	private timeout: number|undefined = undefined;
 
+	private tChart?: Highcharts.Chart;
+	private hChart?: Highcharts.Chart;
+
 	public mounted() {
+		console.log(this.query)
+
 		client.getRoomNames()
 		.then( (rooms) => {
 			this.rooms = rooms;
@@ -85,6 +93,63 @@ export default class TimeSeries extends Vue {
 			}
 		})
 		.catch( (err) => Queue.raise(err) );
+
+		// init charts
+		const baseConfig: Highcharts.Options = {
+			legend: {
+				layout: 'vertical',
+				align: 'right',
+				verticalAlign: 'middle'
+			},
+			xAxis: {
+				type: 'datetime',
+			},
+			plotOptions: {
+				line: {
+					dataLabels: {
+						style: { fontFamily: 'Outfit' },
+						enabled: true
+					},
+					enableMouseTracking: true
+				},
+			},
+		}
+		this.tChart = Highcharts.chart(this.$refs.temperatureChart as HTMLElement, {
+			...baseConfig,
+			title: {
+				style: { fontFamily: 'Outfit' },
+				text: 'Temperature per room'
+			},
+			yAxis: {
+				title: {
+					style: { fontFamily: 'Outfit' },
+					text: 'Temperature (°C)'
+				},
+			},
+			tooltip: {
+				style: { fontFamily: 'Outfit', fontWeight: '300' },
+				shared: true,
+				valueSuffix: '°C'
+			},
+		});
+		this.hChart = Highcharts.chart(this.$refs.humidityChart as HTMLElement, {
+			...baseConfig,
+			title: {
+				style: { fontFamily: 'Outfit' },
+				text: 'Humidity per room'
+			},
+			yAxis: {
+				title: {
+					style: { fontFamily: 'Outfit' },
+					text: 'Humidity (%)'
+				},
+			},
+			tooltip: {
+				style: { fontFamily: 'Outfit', fontWeight: '300' },
+				shared: true,
+				valueSuffix: '%'
+			},
+		});
 	}
 
 	public onChange() {
@@ -120,10 +185,73 @@ export default class TimeSeries extends Vue {
 			client.getSeries({ from, to, by, rooms, ref })
 				.then( (series) => {
 					this.series = series;
+					this.configureChart(series);
 					resolve();
 				})
 				.catch(reject);
 		});
+	}
+
+	private configureChart(data: SeriesResponse) {
+		let startTimestamp: number|undefined;
+
+		let tempSeries:     Highcharts.SeriesOptionsType[] = []
+		let humiditySeries: Highcharts.SeriesOptionsType[] = []
+		let colorIndex = 0;
+		const palette = Highcharts.getOptions().colors!;
+		for( const room in data ) {
+			colorIndex = (colorIndex+1) % palette.length;
+
+			if( data[room].length > 0 && (startTimestamp === undefined || data[room][0].t < startTimestamp) ){
+				startTimestamp = data[room][0].t
+			}
+			tempSeries.push({
+				type: 'line',
+				name: `${room}`,
+				data: data[room].map( (d) => [d.t*1000, d.tavg] ),
+				color: palette[colorIndex],
+				zIndex: 1,
+			})
+			tempSeries.push({
+				name: `${room} range`,
+				data: data[room].map( (d) => [d.t*1000, d.tmin, d.tmax] ),
+				type: 'arearange',
+				lineWidth: 0,
+				linkedTo: ':previous',
+				color: palette[colorIndex],
+				fillOpacity: 0.2,
+				zIndex: 0,
+				marker: { enabled: false }
+			})
+			humiditySeries.push({
+				type: 'line',
+				name: `${room}`,
+				data: data[room].map( (d) => [d.t*1000, d.havg] ),
+				color: palette[colorIndex],
+				zIndex: 1,
+			})
+			humiditySeries.push({
+				name: `${room} range`,
+				data: data[room].map( (d) => [d.t*1000, d.hmin, d.hmax] ),
+				type: 'arearange',
+				lineWidth: 0,
+				linkedTo: ':previous',
+				color: palette[colorIndex],
+				fillOpacity: 0.2,
+				zIndex: 0,
+				marker: { enabled: false }
+			})
+		}
+
+
+		this.tChart?.update({
+			series: tempSeries,
+		}, true, true)
+		console.debug(`after`, tempSeries, this.tChart?.options)
+
+		this.hChart?.update({
+			series: humiditySeries,
+		}, true, true)
 	}
 
 }
