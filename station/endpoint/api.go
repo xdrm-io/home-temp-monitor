@@ -122,35 +122,11 @@ func (s *service) getSeries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ref room, compute delta
-	ref, ok := entries[*req.RefRoom]
-	if !ok {
-		log.Printf("ref room not found in entries")
-		http.Error(w, "ref room not found in entries", http.StatusBadRequest)
+	relative, err := relativeEntries(*req.RefRoom, req.By, entries)
+	if err != nil {
+		log.Printf("cannot compute relative entries: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	relative := make(storage.Entries, len(entries))
-	for room, series := range entries {
-		if room == *req.RefRoom {
-			continue
-		}
-		if len(series) != len(ref) {
-			log.Printf("series length mismatch: [%s] %d != [%s] %d", room, len(series), *req.RefRoom, len(ref))
-			http.Error(w, "series length mismatch", http.StatusBadRequest)
-			return
-		}
-		relative[room] = make([]storage.Entry, len(series))
-		for i, data := range series {
-			relative[room] = append(relative[room], storage.Entry{
-				Timestamp: data.Timestamp,
-				TempMin:   data.TempMin - ref[i].TempMin,
-				TempAvg:   data.TempAvg - ref[i].TempAvg,
-				TempMax:   data.TempMax - ref[i].TempMax,
-				HumMin:    data.HumMin - ref[i].HumMin,
-				HumAvg:    data.HumAvg - ref[i].HumAvg,
-				HumMax:    data.HumMax - ref[i].HumMax,
-			})
-		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -158,6 +134,51 @@ func (s *service) getSeries(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(relative); err != nil {
 		log.Printf("cannot encode entries: %v", err)
 	}
+}
+
+func relativeEntries(refRoom string, by storage.TimeBy, entries storage.Entries) (storage.Entries, error) {
+	// fetch refSeries room from entries
+	refSeries, ok := entries[refRoom]
+	if !ok {
+		return nil, fmt.Errorf("ref room not found in entries")
+	}
+
+	// index @refSeries by timestamp (rounded to @by)
+	timeBuckets := make(map[int64]storage.Entry, len(refSeries))
+	for _, data := range refSeries {
+		// round bucket with modSec
+		bucket := time.Unix(data.Timestamp, 0).Round(by.Duration()).Unix()
+
+		// store the first data for each bucket
+		if _, ok := timeBuckets[bucket]; !ok {
+			timeBuckets[data.Timestamp] = data
+		}
+	}
+
+	relative := make(storage.Entries, len(entries))
+	for room, series := range entries {
+		if room == refRoom {
+			continue
+		}
+		relative[room] = make([]storage.Entry, 0, len(series))
+		for _, data := range series {
+			bucket := time.Unix(data.Timestamp, 0).Round(by.Duration()).Unix()
+			refBucket, ok := timeBuckets[bucket]
+			if !ok {
+				continue
+			}
+			relative[room] = append(relative[room], storage.Entry{
+				Timestamp: data.Timestamp,
+				TempMin:   data.TempMin - refBucket.TempMin,
+				TempAvg:   data.TempAvg - refBucket.TempAvg,
+				TempMax:   data.TempMax - refBucket.TempMax,
+				HumMin:    data.HumMin - refBucket.HumMin,
+				HumAvg:    data.HumAvg - refBucket.HumAvg,
+				HumMax:    data.HumMax - refBucket.HumMax,
+			})
+		}
+	}
+	return relative, nil
 }
 
 func (s *service) getRooms(w http.ResponseWriter, r *http.Request) {
