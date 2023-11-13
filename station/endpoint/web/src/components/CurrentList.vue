@@ -1,6 +1,10 @@
 <template>
 	<div id='current-list'>
-		<h1>Current</h1>
+		<h1>
+			<img v-if='!loading' src='@/assets/current.svg'/>
+			<svg v-if='loading' width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" class="spinner_P7sC"/></svg>
+			Current
+		</h1>
 		<h2>{{ lastUpdateInMinutes(updatedAt) }} min ago</h2>
 		<div class='cards'>
 			<div :class="ref === name ? 'card ref' : 'card'" v-for='(room, name) in rooms' :key='name' @click='setRef(name.toString())'>
@@ -51,6 +55,7 @@ const INITIAL_INTERVAL_MS = 1000;
 const REFRESH_INTERVAL_MS = 60*1000;
 
 export default class CurrentList extends Vue {
+	public loading = false;
 	public updatedAt?: Date                    = undefined;
 	public rooms:      { [name:string]: Room } = {};
 
@@ -143,6 +148,7 @@ export default class CurrentList extends Vue {
 	}
 
 	private fetchCurrent() : Promise<void> {
+		this.loading = true;
 		return new Promise( (resolve, reject) => {
 
 			client.getCurrent()
@@ -181,6 +187,9 @@ export default class CurrentList extends Vue {
 				.catch( (error) => {
 					reject(error);
 				})
+				.finally( () => {
+					this.loading = false;
+				});
 
 		});
 	}
@@ -206,6 +215,13 @@ export default class CurrentList extends Vue {
 		font-weight: 400;
 
 		margin-bottom: .1em;
+
+		img, svg {
+			display: inline-block;
+			width: auto;
+			height: .8em;
+		}
+		.spinner_P7sC{transform-origin:center;animation:spinner_svv2 .75s infinite linear}@keyframes spinner_svv2{100%{transform:rotate(360deg)}}
 	}
 	h2 {
 		color: #707070;
