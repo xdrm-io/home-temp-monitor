@@ -12,7 +12,7 @@
 				</option>
 			</select>
 		</h1>
-		<h2>5 min ago</h2>
+		<h2>{{ lastUpdateInMinutes(updatedAt) }} min ago</h2>
 		<div class='filters'>
 			<select v-model='query.ref' placeholder='reference' @change="onChange()">
 				<option value=''>reference</option>
@@ -69,6 +69,8 @@ export default class TimeSeries extends Vue {
 	public readonly Frequencies: Frequency[] = [Frequency.Second, Frequency.Minute, Frequency.Hour, Frequency.Day];
 	public rooms: string[] = [];
 
+	public updatedAt?: Date;
+
 	public query: Query = {
 		by: Frequency.Hour,
 		from: new Date(Date.now()-24*3600*1000).toISOString().substring(0,10),
@@ -80,6 +82,14 @@ export default class TimeSeries extends Vue {
 
 	private tChart?: Highcharts.Chart;
 	private hChart?: Highcharts.Chart;
+
+
+	public lastUpdateInMinutes(date: Date|undefined): string{
+		if( date === undefined || !(date instanceof Date) ) {
+			return '-';
+		}
+		return Math.round( (Date.now() - date.getTime())/1000 / 60 ).toString();
+	}
 
 	public mounted() {
 
@@ -198,26 +208,26 @@ export default class TimeSeries extends Vue {
 	private configureChart(data: SeriesResponse) {
 		let startTimestamp: number|undefined;
 
-		let tempSeries:     Highcharts.SeriesOptionsType[] = []
-		let humiditySeries: Highcharts.SeriesOptionsType[] = []
-		let colorIndex = 0;
-		const palette = Highcharts.getOptions().colors!;
+		const tSeries:     Highcharts.SeriesOptionsType[] = []
+		const hSeries: Highcharts.SeriesOptionsType[] = []
+		let   colorIndex                                     = 0;
+		const palette                                        = Highcharts.getOptions().colors!;
 		for( const room in data ) {
 			colorIndex = (colorIndex+1) % palette.length;
 
 			if( data[room].length > 0 && (startTimestamp === undefined || data[room][0].t < startTimestamp) ){
 				startTimestamp = data[room][0].t
 			}
-			tempSeries.push({
+			tSeries.push({
 				type: 'line',
 				name: `${room}`,
-				data: data[room].map( (d) => [d.t*1000, d.tavg] ),
+				data: data[room].map( (d) => [d.t*1000, Math.round(100*d.tavg)/100] ),
 				color: palette[colorIndex],
 				zIndex: 1,
 			})
-			tempSeries.push({
+			tSeries.push({
 				name: `${room} range`,
-				data: data[room].map( (d) => [d.t*1000, d.tmin, d.tmax] ),
+				data: data[room].map( (d) => [d.t*1000, Math.round(100*d.tmin)/100, Math.round(100*d.tmax)/100] ),
 				type: 'arearange',
 				lineWidth: 0,
 				linkedTo: ':previous',
@@ -226,16 +236,16 @@ export default class TimeSeries extends Vue {
 				zIndex: 0,
 				marker: { enabled: false }
 			})
-			humiditySeries.push({
+			hSeries.push({
 				type: 'line',
 				name: `${room}`,
-				data: data[room].map( (d) => [d.t*1000, d.havg] ),
+				data: data[room].map( (d) => [d.t*1000, Math.round(100*d.havg)/100] ),
 				color: palette[colorIndex],
 				zIndex: 1,
 			})
-			humiditySeries.push({
+			hSeries.push({
 				name: `${room} range`,
-				data: data[room].map( (d) => [d.t*1000, d.hmin, d.hmax] ),
+				data: data[room].map( (d) => [d.t*1000, Math.round(100*d.hmin)/100, Math.round(100*d.hmax)/100] ),
 				type: 'arearange',
 				lineWidth: 0,
 				linkedTo: ':previous',
@@ -246,14 +256,11 @@ export default class TimeSeries extends Vue {
 			})
 		}
 
+		this.tChart?.update({ series: tSeries, }, true, true)
+		this.hChart?.update({ series: hSeries, }, true, true)
 
-		this.tChart?.update({
-			series: tempSeries,
-		}, true, true)
-
-		this.hChart?.update({
-			series: humiditySeries,
-		}, true, true)
+		this.updatedAt = new Date();
+		Queue.info('Time series updated')
 	}
 
 }
