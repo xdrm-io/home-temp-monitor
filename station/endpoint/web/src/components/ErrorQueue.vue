@@ -34,6 +34,11 @@
 
 			this.queue_uid.push(err.uid);
 			this.queue_err.push(err);
+			if( err.error ){
+				console.warn(err.msg)
+			} else {
+				console.info(err.msg)
+			}
 
 			setTimeout(() => this.onHide(err.uid), 3000);
 
