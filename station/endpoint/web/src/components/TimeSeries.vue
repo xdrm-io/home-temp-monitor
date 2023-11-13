@@ -2,7 +2,7 @@
 	<div id='time-series'>
 		<h1 ref='title'>
 			Evolution from
-			<input type='date' class='from' v-model='query.from' @change="onChange()"/>
+			<input type='date' class='from' v-model='query.from' @change='onChange()'/>
 			to
 			<input type='date' class='to' v-model='query.to' @change="onChange()"/>
 			by
@@ -71,7 +71,7 @@ export default class TimeSeries extends Vue {
 
 	public query: Query = {
 		by: Frequency.Hour,
-		from: new Date(Date.now()-24*3600*1000).toLocaleDateString(),
+		from: new Date(Date.now()-24*3600*1000).toISOString().substring(0,10),
 		rooms: {},
 	};
 	public series: SeriesResponse = {};
@@ -82,17 +82,6 @@ export default class TimeSeries extends Vue {
 	private hChart?: Highcharts.Chart;
 
 	public mounted() {
-		console.log(this.query)
-
-		client.getRoomNames()
-		.then( (rooms) => {
-			this.rooms = rooms;
-			this.query.rooms = {};
-			for( const name of rooms ){
-				this.query.rooms[name] = true;
-			}
-		})
-		.catch( (err) => Queue.raise(err) );
 
 		// init charts
 		const baseConfig: Highcharts.Options = {
@@ -150,6 +139,20 @@ export default class TimeSeries extends Vue {
 				valueSuffix: '%'
 			},
 		});
+
+		client.getRoomNames()
+		.then( (rooms) => {
+			this.rooms = rooms;
+			this.query.rooms = {};
+			for( const name of rooms ){
+				this.query.rooms[name] = true;
+			}
+
+			// launch initial query
+			this.fetchSeries().catch( err => Queue.raise(err) );
+		})
+		.catch( (err) => Queue.raise(err) );
+
 	}
 
 	public onChange() {
@@ -247,7 +250,6 @@ export default class TimeSeries extends Vue {
 		this.tChart?.update({
 			series: tempSeries,
 		}, true, true)
-		console.debug(`after`, tempSeries, this.tChart?.options)
 
 		this.hChart?.update({
 			series: humiditySeries,
