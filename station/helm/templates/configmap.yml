@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  namespace: {{.Values.ns}}
+data:
+  BROKER_ADDR: {{.Values.broker.addr}}
+  MQTT_TOPIC:  '/room/+/env'
+  DB_PATH:     'db.sqlite'

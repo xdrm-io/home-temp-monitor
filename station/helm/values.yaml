@@ -1,0 +1,15 @@
+replicas: 1
+
+ns: homenv
+#ns: homenv-staging # uncomment for staging
+
+server:
+  internal_port: 80
+  external_port: 80
+
+expose_host: homenv.local
+
+broker:
+  addr: "127.0.0.1"
+  user: "broker-user"
+  pass: "broker-pass"

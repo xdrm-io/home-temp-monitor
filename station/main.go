@@ -63,8 +63,8 @@ func main() {
 	})
 	router.Method("GET", "/*", website)
 
-	log.Printf("listening on %s", ":8080")
-	if err := http.ListenAndServe(":8080", router); err != nil {
+	log.Printf("listening on %s", ":80")
+	if err := http.ListenAndServe(":80", router); err != nil {
 		log.Fatalf("http server: %v", err)
 	}
 }

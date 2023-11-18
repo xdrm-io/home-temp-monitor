@@ -1,0 +1,3 @@
+apiVersion: v2
+name: Homenv application
+version: 1.0.0

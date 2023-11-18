@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{.Values.ns}}
+  name: server
+  labels:
+    app: server
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      containers:
+      - name: homenv-server
+        image: 192.168.1.101:32000/homenv/server:latest
+        env:
+        - name: BROKER_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: configmap
+              key: BROKER_ADDR
+        - name: MQTT_TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: configmap
+              key: MQTT_TOPIC
+        - name: DB_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: configmap
+              key: DB_PATH
+        - name: BROKER_USER
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: BROKER_USER
+        - name: BROKER_PASS
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: BROKER_PASS
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+
+

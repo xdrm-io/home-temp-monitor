@@ -1,9 +1,9 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
+	"os"
 )
 
 type Config struct {
@@ -15,32 +15,27 @@ type Config struct {
 }
 
 func ReadConfig() (*Config, error) {
-	flag.Parse()
-	args := flag.Args()
-	if len(args) != 5 {
-		return nil, fmt.Errorf("expected 5 arguments ; got %d", len(args))
-	}
 	config := &Config{
-		BrokerAddr:     args[0],
-		BrokerUser:     args[1],
-		BrokerPass:     args[2],
-		SubscribeTopic: args[3],
-		DBPath:         args[4],
+		BrokerAddr:     os.Getenv("BROKER_ADDR"),
+		BrokerUser:     os.Getenv("BROKER_USER"),
+		BrokerPass:     os.Getenv("BROKER_PASS"),
+		SubscribeTopic: os.Getenv("MQTT_TOPIC"),
+		DBPath:         os.Getenv("DB_PATH"),
 	}
 	if config.BrokerAddr == "" {
-		return nil, fmt.Errorf("missing argument 0 broker_addr")
+		return nil, fmt.Errorf("missing env variable 'BROKER_ADDR'")
 	}
 	if config.BrokerUser == "" {
-		return nil, fmt.Errorf("missing argument 1 broker_user")
+		return nil, fmt.Errorf("missing env variable 'BROKER_USER'")
 	}
 	if config.BrokerPass == "" {
-		return nil, fmt.Errorf("missing argument 2 broker_pass")
+		return nil, fmt.Errorf("missing env variable 'BROKER_PASS'")
 	}
 	if config.SubscribeTopic == "" {
-		return nil, fmt.Errorf("missing argument 3 subscribe_topic")
+		return nil, fmt.Errorf("missing env variable 'MQTT_TOPIC'")
 	}
 	if config.DBPath == "" {
-		return nil, fmt.Errorf("missing argument 4 db_path")
+		return nil, fmt.Errorf("missing env variable 'DB_PATH'")
 	}
 	log.Printf("[config] broker_addr: %q", config.BrokerAddr)
 	log.Printf("[config] broker_user: %q", config.BrokerUser)
