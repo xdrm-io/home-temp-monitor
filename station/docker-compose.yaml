@@ -1,0 +1,32 @@
+version: '3.1'
+
+services:
+  broker:
+    container_name: broker
+    build:
+      context: ./mosquitto
+      args:
+        - BROKER_USERNAME=broker
+        - BROKER_PASSWORD=<set-password>
+        - PROBE_USERNAME=probe
+        - PROBE_PASSWORD=<set-password>
+    restart: always
+    ports:
+      - "1883:1883"
+
+  station:
+    container_name: station
+    build: .
+    environment:
+      - BROKER_ADDR=broker
+      - BROKER_USER=broker
+      - BROKER_PASS=<set-password>
+      - MQTT_TOPIC=/room/+/env
+      - DB_PATH=db.sqlite
+    volumes:
+      - ./db.sqlite:/app/db.sqlite
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - broker
