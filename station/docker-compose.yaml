@@ -3,6 +3,7 @@ version: '3.1'
 services:
   broker:
     container_name: broker
+    hostname: broker
     build:
       context: ./mosquitto
       args:
@@ -27,6 +28,6 @@ services:
       - ./db.sqlite:/app/db.sqlite
     restart: always
     ports:
-      - "8080:80"
+      - "80:80"
     depends_on:
       - broker
