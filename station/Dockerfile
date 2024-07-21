@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY endpoint/web/package.json .
 COPY endpoint/web/yarn.lock .
-RUN yarn
+RUN yarn --ignore-engines
 
 COPY endpoint/web/ .
 RUN yarn build
