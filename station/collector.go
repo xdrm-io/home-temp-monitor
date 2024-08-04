@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"regexp"
 
@@ -74,4 +75,75 @@ func (c *Collector) onReceive(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 	log.Printf("stored")
+
+	c.notifyHass(context.Background(), roomID, m)
+}
+
+// notifyHass notifies Home Assistant of the new measure.
+func (c *Collector) notifyHass(ctx context.Context, room string, m storage.Measure) {
+	// only take the current measure into account, not cached ones
+	if m.OffsetSec != 0 {
+		return
+	}
+
+	type Config struct {
+		DeviceClass       string `json:"device_class"`
+		UniqueID          string `json:"unique_id"`
+		Name              string `json:"name"`
+		StateTopic        string `json:"state_topic"`
+		UnitOfMeasurement string `json:"unit_of_measurement"`
+		ValueTemplate     string `json:"value_template"`
+	}
+
+	var (
+		topicT = "homeassistant/sensor/" + room + "_t"
+		topicH = "homeassistant/sensor/" + room + "_h"
+
+		t = float64(m.Temperature) / 10.
+		h = float64(m.Humidity) / 10.
+	)
+
+	tconfig, err := json.Marshal(Config{
+		DeviceClass:       "temperature",
+		Name:              room + " temperature",
+		UniqueID:          "sensor." + room + "_t",
+		StateTopic:        topicT + "/state",
+		UnitOfMeasurement: "°C",
+		ValueTemplate:     "{{ value }}",
+	})
+	if err != nil {
+		log.Printf("hass notify: encode temperature config: %v", err)
+		return
+	}
+
+	hconfig, err := json.Marshal(Config{
+		DeviceClass:       "humidity",
+		Name:              room + " humidity",
+		UniqueID:          "sensor." + room + "_h",
+		StateTopic:        topicH + "/state",
+		UnitOfMeasurement: "%",
+		ValueTemplate:     "{{ value }}",
+	})
+	if err != nil {
+		log.Printf("hass notify: encode humidity config: %v", err)
+		return
+	}
+
+	// config
+	if tok := c.cli.Publish(topicT+"/config", 0, false, tconfig); tok.Error() != nil {
+		log.Printf("hass notify: publish tconfig: %v", tok.Error())
+	}
+	if tok := c.cli.Publish(topicH+"/config", 0, false, hconfig); tok.Error() != nil {
+		log.Printf("hass notify: publish hconfig: %v", tok.Error())
+	}
+
+	// state
+	tstate := fmt.Sprintf(`%.1f`, t)
+	if tok := c.cli.Publish(topicT+"/state", 0, false, tstate); tok.Error() != nil {
+		log.Printf("hass notify: publish tstate: %v", tok.Error())
+	}
+	hstate := fmt.Sprintf(`%.1f`, h)
+	if tok := c.cli.Publish(topicH+"/state", 0, false, hstate); tok.Error() != nil {
+		log.Printf("hass notify: publish hstate: %v", tok.Error())
+	}
 }
