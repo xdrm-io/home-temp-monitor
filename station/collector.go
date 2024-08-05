@@ -86,13 +86,22 @@ func (c *Collector) notifyHass(ctx context.Context, room string, m storage.Measu
 		return
 	}
 
+	type DeviceConfig struct {
+		Identifiers  []string `json:"identifiers"`
+		Name         string   `json:"name"`
+		Model        string   `json:"model"`
+		Manufacturer string   `json:"manufacturer"`
+		SwVersion    string   `json:"sw_version"`
+	}
+
 	type Config struct {
-		DeviceClass       string `json:"device_class"`
-		UniqueID          string `json:"unique_id"`
-		Name              string `json:"name"`
-		StateTopic        string `json:"state_topic"`
-		UnitOfMeasurement string `json:"unit_of_measurement"`
-		ValueTemplate     string `json:"value_template"`
+		DeviceClass       string       `json:"device_class"`
+		UniqueID          string       `json:"unique_id"`
+		Name              string       `json:"name"`
+		StateTopic        string       `json:"state_topic"`
+		UnitOfMeasurement string       `json:"unit_of_measurement"`
+		ValueTemplate     string       `json:"value_template"`
+		Device            DeviceConfig `json:"device"`
 	}
 
 	var (
@@ -101,6 +110,14 @@ func (c *Collector) notifyHass(ctx context.Context, room string, m storage.Measu
 
 		t = float64(m.Temperature) / 10.
 		h = float64(m.Humidity) / 10.
+
+		dev = DeviceConfig{
+			Identifiers:  []string{"homenv-station-" + room},
+			Name:         room + " env station",
+			Model:        "homenv-station",
+			Manufacturer: "xdrm.io",
+			SwVersion:    "1.0",
+		}
 	)
 
 	tconfig, err := json.Marshal(Config{
@@ -110,6 +127,7 @@ func (c *Collector) notifyHass(ctx context.Context, room string, m storage.Measu
 		StateTopic:        topicT + "/state",
 		UnitOfMeasurement: "°C",
 		ValueTemplate:     "{{ value }}",
+		Device:            dev,
 	})
 	if err != nil {
 		log.Printf("hass notify: encode temperature config: %v", err)
@@ -123,6 +141,7 @@ func (c *Collector) notifyHass(ctx context.Context, room string, m storage.Measu
 		StateTopic:        topicH + "/state",
 		UnitOfMeasurement: "%",
 		ValueTemplate:     "{{ value }}",
+		Device:            dev,
 	})
 	if err != nil {
 		log.Printf("hass notify: encode humidity config: %v", err)
